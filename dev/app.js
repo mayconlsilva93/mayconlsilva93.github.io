@@ -13,7 +13,7 @@ $$('header nav a').forEach(a=>a.addEventListener('click',()=>hd.classList.remove
 const io=new IntersectionObserver(e=>e.forEach(x=>{if(x.isIntersecting){x.target.classList.add('in');io.unobserve(x.target)}}),{threshold:.1});
 $$('.rv').forEach(x=>io.observe(x));
 function contar(el){const n=+el.dataset.count;const io2=new IntersectionObserver((e,o)=>{if(!e[0].isIntersecting)return;o.disconnect();let t0;
- const f=t=>{t0??=t;const k=Math.min(1,(t-t0)/1500);el.textContent=Math.round(n*(1-Math.pow(1-k,3))).toLocaleString('pt-BR');k<1&&requestAnimationFrame(f)};requestAnimationFrame(f)});io2.observe(el)}
+ const f=t=>{t0??=t;const k=Math.min(1,(t-t0)/1500);el.textContent=Math.round(n*(1-Math.pow(1-k,3))).toLocaleString('pt-BR');if(k<1)requestAnimationFrame(f);else el.parentElement.querySelector('small')?.classList.add('on')};requestAnimationFrame(f)});io2.observe(el)}
 const prepCount=()=>$$('[data-count]').forEach(contar);
 
 // dados ao vivo (Painel Geral via GitHub), com cópia local de reserva
