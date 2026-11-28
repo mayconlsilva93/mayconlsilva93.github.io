@@ -26,12 +26,13 @@ function linhas(dias,{artista,filtro,limite,de,ate}={}){const fa=artista||filtro
   const sh=fa?d.shows.filter(s=>s.a.includes(fa)):d.shows;if(!sh.length)continue;
   const dt=new Date(d.d+'T12:00:00');
   h+=`<div class="ag-day"><h4>${String(dt.getDate()).padStart(2,'0')}.${MES[dt.getMonth()].slice(0,3)}<small>${SEM[dt.getDay()].toUpperCase()}</small></h4><div>${sh.map(s=>
-   `<div class="show">${artista?'':`<div class="a">${s.a.map(x=>esc(NOMES[x]||x)).join(' / ')}</div>`}<div class="e">${esc(s.ev)}<small>${esc(s.ci)}</small></div>${s.priv?'':`<a class="tk" href="${g(s)}" target="_blank" rel="noopener">Ingressos ↗</a>`}</div>`).join('')}</div></div>`;
+   `<div class="show">${artista?'':`<div class="a">${s.a.map(x=>esc(NOMES[x]||x)).join(' / ')}</div>`}<div class="e">${esc(s.ev)}<small>${esc(s.ci)}</small></div>${s.priv||s.soc?'':`<a class="tk" href="${g(s)}" target="_blank" rel="noopener">Ingressos ↗</a>`}</div>`).join('')}</div></div>`;
   if(limite&&++n>=limite)break}
  return h||'<p style="color:#999;padding:12px 0">Sem datas públicas neste período. Fale com a gente para checar disponibilidade.</p>'}
 const km=(a,b)=>{const R=6371,r=Math.PI/180,x=Math.sin((b[0]-a[0])*r/2)**2+Math.cos(a[0]*r)*Math.cos(b[0]*r)*Math.sin((b[1]-a[1])*r/2)**2;return 2*R*Math.asin(Math.sqrt(x))};
 
-async function agenda(){const alvos=$$('[data-agenda]');if(!alvos.length)return;const A=await dados('agenda.json');if(!A)return;
+async function agenda(){const alvos=$$('[data-agenda]');if(!alvos.length&&!$('#agbox'))return;const A=await dados('agenda.json');if(!A)return;
+ const hj=new Date(),HJ=hj.getFullYear()+'-'+String(hj.getMonth()+1).padStart(2,'0')+'-'+String(hj.getDate()).padStart(2,'0');A.dias=A.dias.filter(d=>d.d>=HJ);
  alvos.forEach(el=>{const o=el.dataset;el.innerHTML=linhas(A.dias,{artista:o.artista,limite:+o.limite||0})});
  const box=$('#agbox');if(!box)return;
  // filtros por artista
@@ -52,7 +53,8 @@ async function agenda(){const alvos=$$('[data-agenda]');if(!alvos.length)return;
  desenha();render();
  // perto de você
  const np=$('#perto'),msg=$('#pertomsg');
- np.onclick=()=>{if(perto){perto=null;np.firstElementChild.textContent='Shows perto de você';msg.textContent='';render();return}
+ const ci=$('#cidade');if(ci){let CO=null;ci.addEventListener('change',async()=>{CO??=await (await fetch('dados/cidades.json')).json();const k=ci.value.trim();const g=CO[k];if(!g){msg.textContent='Escolha uma cidade da lista.';return}perto=g;msg.textContent='Shows até 150 km de '+k.replace('/',' · ')+'.';np.firstElementChild.textContent='Ver todos os shows';render()});ci.addEventListener('focus',async()=>{if(CO)return;CO=await (await fetch('dados/cidades.json')).json();$('#cidades').innerHTML=Object.keys(CO).map(c=>`<option value="${c}">`).join('')},{once:true})}
+ np.onclick=()=>{if(perto){perto=null;np.firstElementChild.textContent='Usar minha localização';msg.textContent='';if(ci)ci.value='';render();return}
   if(!navigator.geolocation){msg.textContent='Seu navegador não informa a localização.';return}
   msg.textContent='Buscando sua localização…';
   navigator.geolocation.getCurrentPosition(p=>{perto=[p.coords.latitude,p.coords.longitude];np.firstElementChild.textContent='Ver todos os shows';msg.textContent='Mostrando shows até 150 km de você.';render()},
@@ -61,12 +63,12 @@ async function agenda(){const alvos=$$('[data-agenda]');if(!alvos.length)return;
 
 // ---------- números, pizza e mapa
 async function numeros(){const S=await dados('stats.json');if(!S)return;
- $$('[data-k]').forEach(el=>{const k=el.dataset.k;let v=k==='showsR'?Math.floor(S.shows/100)*100:k.startsWith('cid:')?S.artistas[k.slice(4)]:S[k];if(v!=null){el.dataset.count=v}});
+ $$('[data-k]').forEach(el=>{const k=el.dataset.k;let v=k==='showsR'?Math.floor(S.shows/100)*100:k.startsWith('cid:')?S.artistas[k.slice(4)]:S[k];if(v!=null){if(k.startsWith('cid:'))v=Math.floor(v/5)*5;el.dataset.count=v}});
  prepCount();
  const pz=$('#pizza');if(pz){const P=S.pizza,C=2*Math.PI*25;let off=0;
   const seg=[['pub','var(--y)'],['uni','var(--g)'],['soc','var(--p)']];
   pz.querySelector('svg').innerHTML=seg.map(([k,c])=>{const l=P[k]/100*C;const s=`<circle class="s" r="25" cx="50" cy="50" stroke="${c}" stroke-width="50" stroke-dasharray="0 ${C}" data-l="${l}" stroke-dashoffset="${-off}" transform="rotate(-90 50 50)"></circle>`;off+=l;return s}).join('')+'<circle r="49" cx="50" cy="50" fill="none" stroke="#000" stroke-width="2"/>';
-  seg.forEach(([k])=>{const e=$('[data-p="'+k+'"]',pz);if(e)e.textContent=Math.round(P[k])+'%'});
+  seg.forEach(([k])=>{const e=$('[data-p="'+k+'"]',pz);if(e)e.textContent=P[k].toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%'});
   new IntersectionObserver((e,o)=>{if(!e[0].isIntersecting)return;o.disconnect();$$('circle.s',pz).forEach((c,i)=>setTimeout(()=>c.setAttribute('stroke-dasharray',c.dataset.l+' '+C),i*250))},{threshold:.3}).observe(pz)}
  const mp=$('#mapa');if(mp){const M=window.DROM_MAPA;const svg=$('svg',mp),tip=$('.mtip',mp);
   const xy=g=>[(g[1]-M.lon0)*M.k*M.s,(M.lat1-g[0])*M.s];
