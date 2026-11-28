@@ -17,7 +17,7 @@ function contar(el){const n=+el.dataset.count;const io2=new IntersectionObserver
 const prepCount=()=>$$('[data-count]').forEach(contar);
 
 // dados ao vivo (Painel Geral via GitHub), com cópia local de reserva
-async function dados(nome){for(const u of [RAW+nome+'?t='+Date.now()/6e5|0,'dados/'+nome]){try{const r=await fetch(u);if(r.ok)return await r.json()}catch(e){}}return null}
+async function dados(nome){for(const u of [RAW+nome+'?t='+(Date.now()/6e4|0),'dados/'+nome+'?t='+(Date.now()/6e4|0)]){try{const r=await fetch(u,{cache:'no-store'});if(r.ok)return await r.json()}catch(e){}}return null}
 
 // ---------- agenda
 const g=s=>`https://www.google.com/search?q=${encodeURIComponent('ingresso '+s.ev+' '+s.ci.split('/')[0])}`;
